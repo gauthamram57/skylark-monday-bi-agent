@@ -135,15 +135,18 @@ class BusinessIntelligenceAgent:
         closed_total = win_count + lost_count
         win_rate = (win_count / closed_total * 100) if closed_total > 0 else 0.0
         
-        # Sector tag
-        sec_str = ", ".join(parsed["sectors"]) if parsed["sectors"] else "All Sectors"
+        open_val = open_df['Deal Value Clean'].sum()
+        open_weighted = open_df['Weighted Value'].sum()
+        won_val = won_df['Deal Value Clean'].sum()
+        lost_val = lost_df['Deal Value Clean'].sum()
         
-        headline = f"### 📊 Pipeline Overview for {sec_str}\n"
-        headline += f"- **Total Deals**: {total_deals}\n"
-        headline += f"- **Gross Pipeline Value**: ₹{total_val:,.2f}\n"
-        headline += f"- **Weighted Pipeline Value**: ₹{weighted_val:,.2f}\n"
-        headline += f"- **Historical Win Rate**: {win_rate:.1f}% ({win_count} Won / {closed_total} Closed)\n"
-        headline += f"- **Active Open Deals**: {open_count} deals worth ₹{open_df['Deal Value Clean'].sum():,.2f}\n"
+        headline = f"### Pipeline Overview for {sec_str}\n"
+        headline += f"- **Active Open Pipeline**: {open_count} open deals worth **₹{open_val:,.2f}** (Weighted Probability Value: **₹{open_weighted:,.2f}**)\n"
+        headline += f"- **Closed Won Deals**: {win_count} won deals worth **₹{won_val:,.2f}**\n"
+        headline += f"- **Historical Win Rate**: **{win_rate:.1f}%** ({win_count} Won / {closed_total} Closed)\n"
+        headline += f"- **Total Recorded Funnel**: {total_deals} total deals (Gross Value: ₹{total_val:,.2f}, Total Weighted Value: ₹{weighted_val:,.2f})\n"
+        if lost_val > 100000000:
+            headline += f"- *Data Resilience Note*: Includes {lost_count} lost deals worth ₹{lost_val:,.2f} (e.g. lost tender/enterprise deal Giorno).\n"
         
         # Breakdown by Deal Stage
         stage_summary = df.groupby("Deal Stage Clean").agg(
@@ -153,9 +156,9 @@ class BusinessIntelligenceAgent:
         ).reset_index().sort_values(by="Gross_Value", ascending=False)
         
         insights = [
-            f"💡 **Open Deal Opportunity**: There are currently {open_count} active open deals in the funnel with a weighted value of ₹{open_df['Weighted Value'].sum():,.2f}.",
-            f"🎯 **Win Rate Metric**: Sector exhibits a {win_rate:.1f}% historical closure rate.",
-            f"⚠️ **Risk Factor**: {(df['Deal Value Clean'] == 0).sum()} deals are listed without monetary values."
+            f"Active Open Opportunity: Currently {open_count} active open deals in negotiation/proposal stage with probability-adjusted weighted value of ₹{open_weighted:,.2f}.",
+            f"Win Rate Performance: {sec_str} sector exhibits a {win_rate:.1f}% closure rate across historical deals.",
+            f"Data Coverage: {(df['Deal Value Clean'] == 0).sum()} deals in this dataset have unpriced zero-value placeholders."
         ]
         
         # Recommendations

@@ -22,7 +22,7 @@ st.set_page_config(
 DEALS_EXCEL = "/home/gt/Projects/skylark_project/Deal funnel Data.xlsx"
 WO_EXCEL = "/home/gt/Projects/skylark_project/Work_Order_Tracker Data.xlsx"
 
-# Executive Styling & Theme-Adaptive Typography
+# Executive ChatGPT-Style CSS Styling
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
@@ -31,6 +31,12 @@ st.markdown("""
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     }
     
+    /* Scrollable Chat Window styling */
+    .stContainer {
+        border-radius: 10px;
+    }
+    
+    /* Executive Metric Card */
     .metric-card {
         border: 1px solid rgba(128, 128, 128, 0.2);
         border-radius: 8px;
@@ -38,6 +44,7 @@ st.markdown("""
         text-align: left;
     }
     
+    /* Resilience Warning Box */
     .resilience-alert {
         border: 1px solid rgba(59, 130, 246, 0.3);
         border-left: 4px solid #3b82f6;
@@ -146,7 +153,7 @@ tab_chat, tab_explorer, tab_leadership, tab_docs = st.tabs([
 ])
 
 # ---------------------------------------------------------
-# TAB 1: CONVERSATIONAL BI AGENT
+# TAB 1: CONVERSATIONAL BI AGENT (ChatGPT-Style Layout & Streaming)
 # ---------------------------------------------------------
 with tab_chat:
     st.markdown("##### Suggested Founder Queries:")
@@ -167,96 +174,114 @@ with tab_chat:
     elif p4: selected_prompt = "Compare deal win rate and revenue execution across all sectors"
     elif p5: selected_prompt = "Show complete executive cross-board overview"
 
-    # Display Conversation History
-    for idx, msg in enumerate(st.session_state["messages"]):
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
-            if "table" in msg and msg["table"]:
-                st.dataframe(pd.DataFrame(msg["table"]), use_container_width=True)
-            if "chart" in msg and msg["chart"]:
-                cdata = msg["chart"]
-                if cdata.get("x") and cdata.get("y"):
-                    fig = px.bar(x=cdata["x"], y=cdata["y"], title=cdata.get("title", ""))
-                    st.plotly_chart(fig, use_container_width=True, key=f"hist_bar_{idx}")
-                elif cdata.get("labels") and cdata.get("values"):
-                    fig = px.pie(names=cdata["labels"], values=cdata["values"], title=cdata.get("title", ""))
-                    st.plotly_chart(fig, use_container_width=True, key=f"hist_pie_{idx}")
+    # ChatGPT-Style Scrollable Chat Window Container (Height 560px)
+    chat_container = st.container(height=560)
+    
+    with chat_container:
+        if not st.session_state["messages"]:
+            st.info("Welcome to Skylark Drones BI Agent. Select a suggested query above or type any custom business question in the chat box below to begin.")
+            
+        # Display Conversation History inside Scrollable Window
+        for idx, msg in enumerate(st.session_state["messages"]):
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
+                if "table" in msg and msg["table"]:
+                    st.dataframe(pd.DataFrame(msg["table"]), use_container_width=True)
+                if "chart" in msg and msg["chart"]:
+                    cdata = msg["chart"]
+                    if cdata.get("x") and cdata.get("y"):
+                        fig = px.bar(x=cdata["x"], y=cdata["y"], title=cdata.get("title", ""))
+                        st.plotly_chart(fig, use_container_width=True, key=f"hist_bar_{idx}")
+                    elif cdata.get("labels") and cdata.get("values"):
+                        fig = px.pie(names=cdata["labels"], values=cdata["values"], title=cdata.get("title", ""))
+                        st.plotly_chart(fig, use_container_width=True, key=f"hist_pie_{idx}")
 
-    # Chat Input Box (Pinned to Bottom for Continuous Asking)
+    # Chat Input Box (Pinned Permanently at Bottom Outside Container)
     user_input = st.chat_input("Ask a founder-level business question...")
     query_to_run = selected_prompt or user_input
     
     if query_to_run:
+        # Append User Message
         st.session_state["messages"].append({"role": "user", "content": query_to_run})
-        with st.chat_message("user"):
-            st.markdown(query_to_run)
-            
-        with st.chat_message("assistant"):
-            with st.spinner("Analyzing Monday.com boards and querying Business Intelligence..."):
-                res = agent.answer_query(query_to_run)
+        
+        with chat_container:
+            with st.chat_message("user"):
+                st.markdown(query_to_run)
                 
-                # Clean headline text
-                headline_text = res.get("headline", res.get("response_text", ""))
-                clean_headline = headline_text.replace("📊 ", "").replace("💰 ", "").replace("🛠️ ", "").replace("🌐 ", "").replace("🏢 ", "").replace("💡 ", "").replace("🎯 ", "").replace("⚠️ ", "").replace("💵 ", "").replace("📌 ", "").replace("🚨 ", "").replace("✅ ", "").replace("🏆 ", "").replace("🔄 ", "").replace("📈 ", "").replace("⚙️ ", "").replace("🛡️ ", "")
-                
-                if res.get("status") == "clarification_needed":
-                    st.warning(res["response_text"])
-                    st.write("**Recommended Options:**")
-                    for opt in res["options"]:
-                        st.caption(f"- {opt}")
-                else:
-                    # Stream response word-by-word (ChatGPT-style streaming)
-                    def stream_text():
-                        words = clean_headline.split(" ")
-                        for i, word in enumerate(words):
-                            yield word + (" " if i < len(words) - 1 else "")
-                            time.sleep(0.012)
-                            
-                    st.write_stream(stream_text)
+            with st.chat_message("assistant"):
+                with st.spinner("Analyzing Monday.com boards and generating line-by-line intelligence..."):
+                    res = agent.answer_query(query_to_run)
                     
-                    # Interactive Chart
-                    if "chart_data" in res and res["chart_data"]:
-                        cdata = res["chart_data"]
-                        chart_key = f"live_chart_{len(st.session_state['messages'])}"
-                        if res.get("chart_type") == "pie":
-                            fig = px.pie(names=cdata["labels"], values=cdata["values"], title=cdata["title"])
-                            st.plotly_chart(fig, use_container_width=True, key=chart_key)
-                        else:
-                            fig = px.bar(x=cdata["x"], y=cdata["y"], title=cdata["title"])
-                            st.plotly_chart(fig, use_container_width=True, key=chart_key)
+                    # Clean headline text
+                    headline_text = res.get("headline", res.get("response_text", ""))
+                    clean_headline = headline_text.replace("📊 ", "").replace("💰 ", "").replace("🛠️ ", "").replace("🌐 ", "").replace("🏢 ", "").replace("💡 ", "").replace("🎯 ", "").replace("⚠️ ", "").replace("💵 ", "").replace("📌 ", "").replace("🚨 ", "").replace("✅ ", "").replace("🏆 ", "").replace("🔄 ", "").replace("📈 ", "").replace("⚙️ ", "").replace("🛡️ ", "")
+                    
+                    if res.get("status") == "clarification_needed":
+                        st.warning(res["response_text"])
+                        st.write("**Recommended Options:**")
+                        for opt in res["options"]:
+                            st.caption(f"- {opt}")
+                    else:
+                        # Stream line-by-line / word-by-word typing animation (ChatGPT Style)
+                        def stream_line_by_line():
+                            lines = clean_headline.split("\n")
+                            for line_idx, line in enumerate(lines):
+                                words = line.split(" ")
+                                for w_idx, word in enumerate(words):
+                                    yield word + (" " if w_idx < len(words) - 1 else "")
+                                    time.sleep(0.01)
+                                if line_idx < len(lines) - 1:
+                                    yield "\n"
+                                    time.sleep(0.03)
+                                
+                        st.write_stream(stream_line_by_line)
+                        
+                        # Interactive Chart
+                        if "chart_data" in res and res["chart_data"]:
+                            cdata = res["chart_data"]
+                            chart_key = f"live_chart_{len(st.session_state['messages'])}"
+                            if res.get("chart_type") == "pie":
+                                fig = px.pie(names=cdata["labels"], values=cdata["values"], title=cdata["title"])
+                                st.plotly_chart(fig, use_container_width=True, key=chart_key)
+                            else:
+                                fig = px.bar(x=cdata["x"], y=cdata["y"], title=cdata["title"])
+                                st.plotly_chart(fig, use_container_width=True, key=chart_key)
+                                
+                        # Data Table Breakdown
+                        if "table_data" in res and res["table_data"]:
+                            st.markdown("##### Data Breakdown:")
+                            df_table = pd.DataFrame(res["table_data"])
+                            st.dataframe(df_table, use_container_width=True)
                             
-                    # Data Table Breakdown
-                    if "table_data" in res and res["table_data"]:
-                        st.markdown("##### Data Breakdown:")
-                        df_table = pd.DataFrame(res["table_data"])
-                        st.dataframe(df_table, use_container_width=True)
-                        
-                    # Strategic Insights & Recommendations
-                    st.markdown("##### Strategic Insights:")
-                    for insight in res.get("insights", []):
-                        clean_insight = insight.replace("💡 ", "").replace("🎯 ", "").replace("⚠️ ", "").replace("💵 ", "").replace("📌 ", "").replace("🚨 ", "").replace("✅ ", "").replace("🏆 ", "").replace("🔄 ", "").replace("📈 ", "").replace("⚙️ ", "").replace("🛡️ ", "")
-                        st.write(f"- {clean_insight}")
-                        
-                    st.markdown("##### Recommended Actions:")
-                    for rec in res.get("recommendations", []):
-                        st.write(f"- {rec}")
-                        
-                    # Resilience Caveats
-                    if res.get("data_warnings"):
-                        st.markdown('<div class="resilience-alert">', unsafe_allow_html=True)
-                        st.markdown("**Data Resilience Caveats & Quality Notes:**")
-                        for w in res["data_warnings"]:
-                            clean_w = w.replace("⚠️ ", "").replace("ℹ️ ", "").replace("📊 ", "").replace("💵 ", "").replace("📌 ", "").replace("🚨 ", "")
-                            st.caption(f"- {clean_w}")
-                        st.markdown('</div>', unsafe_allow_html=True)
-                        
-                # Store message in conversation history
-                st.session_state["messages"].append({
-                    "role": "assistant",
-                    "content": clean_headline,
-                    "table": res.get("table_data"),
-                    "chart": res.get("chart_data")
-                })
+                        # Strategic Insights & Recommendations
+                        st.markdown("##### Strategic Insights:")
+                        for insight in res.get("insights", []):
+                            clean_insight = insight.replace("💡 ", "").replace("🎯 ", "").replace("⚠️ ", "").replace("💵 ", "").replace("📌 ", "").replace("🚨 ", "").replace("✅ ", "").replace("🏆 ", "").replace("🔄 ", "").replace("📈 ", "").replace("⚙️ ", "").replace("🛡️ ", "")
+                            st.write(f"- {clean_insight}")
+                            
+                        st.markdown("##### Recommended Actions:")
+                        for rec in res.get("recommendations", []):
+                            st.write(f"- {rec}")
+                            
+                        # Resilience Caveats
+                        if res.get("data_warnings"):
+                            st.markdown('<div class="resilience-alert">', unsafe_allow_html=True)
+                            st.markdown("**Data Resilience Caveats & Quality Notes:**")
+                            for w in res["data_warnings"]:
+                                clean_w = w.replace("⚠️ ", "").replace("ℹ️ ", "").replace("📊 ", "").replace("💵 ", "").replace("📌 ", "").replace("🚨 ", "")
+                                st.caption(f"- {clean_w}")
+                            st.markdown('</div>', unsafe_allow_html=True)
+                            
+                    # Store message in session state
+                    st.session_state["messages"].append({
+                        "role": "assistant",
+                        "content": clean_headline,
+                        "table": res.get("table_data"),
+                        "chart": res.get("chart_data")
+                    })
+                    
+        # Rerun to refresh scrollable container with latest message at the bottom
+        st.rerun()
 
 # ---------------------------------------------------------
 # TAB 2: BOARD DATA EXPLORER

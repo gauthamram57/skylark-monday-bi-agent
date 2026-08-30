@@ -273,11 +273,29 @@ with tab_chat:
                     "chart": res.get("chart_data")
                 })
                 
-        # Smooth Auto-Scroll to Bottom JavaScript
-        components.html(
-            "<script>window.parent.document.querySelector('.main').scrollTo({top: window.parent.document.querySelector('.main').scrollHeight, behavior: 'smooth'});</script>",
-            height=0
-        )
+        # Target Anchor & Multi-Timeout Auto-Scroll JavaScript
+        st.markdown('<div id="end-of-chat"></div>', unsafe_allow_html=True)
+        components.html("""
+        <script>
+            function scrollToBottom() {
+                try {
+                    var mainContainer = window.parent.document.querySelector('.main');
+                    if (mainContainer) {
+                        mainContainer.scrollTo({ top: mainContainer.scrollHeight, behavior: 'smooth' });
+                    }
+                    var target = window.parent.document.getElementById('end-of-chat');
+                    if (target) {
+                        target.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                    }
+                } catch (e) {
+                    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                }
+            }
+            setTimeout(scrollToBottom, 50);
+            setTimeout(scrollToBottom, 300);
+            setTimeout(scrollToBottom, 800);
+        </script>
+        """, height=0)
         st.rerun()
 
 # ---------------------------------------------------------

@@ -19,9 +19,10 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# File Paths
-DEALS_EXCEL = "/home/gt/Projects/skylark_project/Deal funnel Data.xlsx"
-WO_EXCEL = "/home/gt/Projects/skylark_project/Work_Order_Tracker Data.xlsx"
+# File Paths (Dynamic for Streamlit Community Cloud and Local Execution)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DEALS_EXCEL = os.path.join(BASE_DIR, "Deal funnel Data.xlsx")
+WO_EXCEL = os.path.join(BASE_DIR, "Work_Order_Tracker Data.xlsx")
 
 # Claude-Inspired Executive Warm Palette Styling
 st.markdown("""
@@ -423,7 +424,7 @@ with tab_leadership:
         st.write("Download styled PDF report for leadership distribution.")
         
         if st.button("Generate & Download PDF Report", type="primary"):
-            pdf_path = "/home/gt/Projects/skylark_project/Skylark_Executive_Briefing.pdf"
+            pdf_path = os.path.join(BASE_DIR, "Skylark_Executive_Briefing.pdf")
             leadership_gen.export_pdf_report(pdf_path)
             with open(pdf_path, "rb") as f:
                 st.download_button(
@@ -439,7 +440,7 @@ with tab_leadership:
 # ---------------------------------------------------------
 with tab_docs:
     st.subheader("Decision Log & Architectural Overview")
-    doc_path = "/home/gt/Projects/skylark_project/DECISION_LOG.md"
+    doc_path = os.path.join(BASE_DIR, "DECISION_LOG.md")
     if os.path.exists(doc_path):
         with open(doc_path, "r") as f:
             st.markdown(f.read())

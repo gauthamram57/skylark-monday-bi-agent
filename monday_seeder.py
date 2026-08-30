@@ -190,8 +190,9 @@ if __name__ == "__main__":
         print("Usage: python monday_seeder.py <MONDAY_API_KEY>")
         sys.exit(1)
         
-    deals_path = "/home/gt/Projects/skylark_project/Deal funnel Data.xlsx"
-    wo_path = "/home/gt/Projects/skylark_project/Work_Order_Tracker Data.xlsx"
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    deals_path = os.path.join(base_dir, "Deal funnel Data.xlsx")
+    wo_path = os.path.join(base_dir, "Work_Order_Tracker Data.xlsx")
     
     df_deals = DataResilienceEngine.clean_deals_df(pd.read_excel(deals_path))
     df_wo = DataResilienceEngine.clean_work_orders_df(pd.read_excel(wo_path, header=1))

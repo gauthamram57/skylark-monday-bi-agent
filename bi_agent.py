@@ -17,7 +17,7 @@ class BusinessIntelligenceAgent:
 
     def parse_query_intent(self, query: str) -> Dict[str, Any]:
         """
-        Classify intent, sector filters, timeframe, and target boards from natural language.
+        Classify intent, sector filters, timeframe, entity search terms, and target boards from natural language.
         """
         q = query.lower().strip()
         
@@ -36,36 +36,42 @@ class BusinessIntelligenceAgent:
         if "secur" in q or "surveil" in q:
             sectors.append("Security & Surveillance")
             
-        # 2. Timeframe Identification
-        quarter = None
-        if "q1" in q:
-            quarter = "Q1"
-        elif "q2" in q:
-            quarter = "Q2"
-        elif "q3" in q:
-            quarter = "Q3"
-        elif "q4" in q:
-            quarter = "Q4"
-        elif "this quarter" in q or "current quarter" in q:
-            quarter = "Q3 FY25-26"
-            
-        # 3. Intent & Topic Classification
+        # 2. Entity / Specific Keyword Identification (Deal Names, Owner Codes, Client Codes)
+        search_term = ""
         intent = "general_summary"
-        if any(k in q for k in ["pipeline", "funnel", "lead", "deal", "closure", "won", "lost"]):
-            intent = "pipeline_health"
-        elif any(k in q for k in ["revenue", "billed", "invoice", "collected", "receivable", "ar", "collection"]):
-            intent = "financial_performance"
-        elif any(k in q for k in ["work order", "execution", "completion", "operational", "delay", "status", "delivery"]):
-            intent = "operational_metrics"
-        elif any(k in q for k in ["sector", "compare", "breakdown", "performance", "top sector"]):
-            intent = "sector_performance"
-        elif any(k in q for k in ["leadership", "update", "briefing", "summary", "board update"]):
-            intent = "leadership_update"
+        
+        # Check words for specific entity matches
+        words = [re.sub(r"[^\w_-]", "", w) for w in q.split()]
+        for w in words:
+            if len(w) >= 3 and w not in ["the", "for", "and", "about", "deal", "work", "order", "status", "show", "what", "how", "sector", "this", "quarter"]:
+                matches_deal = self.dm.df_deals["Deal Name Clean"].str.lower().str.contains(w, na=False).any()
+                matches_owner = self.dm.df_deals["Owner Code Clean"].str.lower().str.contains(w, na=False).any()
+                matches_client = self.dm.df_deals["Client Code Clean"].str.lower().str.contains(w, na=False).any()
+                matches_wo_deal = self.dm.df_wo["Deal Name Clean"].str.lower().str.contains(w, na=False).any()
+                matches_wo_client = self.dm.df_wo["Customer Code Clean"].str.lower().str.contains(w, na=False).any()
+                
+                if matches_deal or matches_owner or matches_client or matches_wo_deal or matches_wo_client:
+                    intent = "entity_lookup"
+                    search_term = w
+                    break
+                    
+        # 3. Intent & Topic Classification (if not entity lookup)
+        if intent != "entity_lookup":
+            if any(k in q for k in ["pipeline", "funnel", "lead", "deal", "closure", "won", "lost"]):
+                intent = "pipeline_health"
+            elif any(k in q for k in ["revenue", "billed", "invoice", "collected", "receivable", "ar", "collection"]):
+                intent = "financial_performance"
+            elif any(k in q for k in ["work order", "execution", "completion", "operational", "delay", "status", "delivery"]):
+                intent = "operational_metrics"
+            elif any(k in q for k in ["sector", "compare", "breakdown", "performance", "top sector"]):
+                intent = "sector_performance"
+            elif any(k in q for k in ["leadership", "update", "briefing", "summary", "board update"]):
+                intent = "leadership_update"
             
         # 4. Check for ambiguity
         needs_clarification = False
         clarification_msg = ""
-        if len(q.split()) < 3 and intent == "general_summary":
+        if len(q.split()) < 3 and intent == "general_summary" and not search_term:
             needs_clarification = True
             clarification_msg = "Could you please specify which area you'd like insights on? For example: Pipeline Health, Revenue & Collections, Sectoral Breakdown, or Operational Execution?"
 
@@ -73,7 +79,7 @@ class BusinessIntelligenceAgent:
             "query": query,
             "intent": intent,
             "sectors": sectors,
-            "quarter": quarter,
+            "search_term": search_term,
             "needs_clarification": needs_clarification,
             "clarification_msg": clarification_msg
         }
@@ -105,6 +111,10 @@ class BusinessIntelligenceAgent:
         df_deals = self.dm.df_deals
         df_wo = self.dm.df_wo
         
+        # Route to entity lookup if specific search term detected
+        if intent == "entity_lookup":
+            return self._analyze_entity_lookup(query, df_deals, df_wo, parsed["search_term"])
+            
         # Apply Sector Filters if specified
         if parsed["sectors"]:
             df_deals = df_deals[df_deals["Sector Clean"].isin(parsed["sectors"])]
@@ -121,6 +131,83 @@ class BusinessIntelligenceAgent:
             return self._analyze_sector_performance(query, df_deals, df_wo, parsed)
         else:
             return self._analyze_cross_board_overview(query, df_deals, df_wo, parsed)
+
+    def _analyze_entity_lookup(self, query: str, df_deals: pd.DataFrame, df_wo: pd.DataFrame, term: str) -> Dict[str, Any]:
+        """Perform specific item lookup across Deals and Work Orders boards."""
+        # Filter matching deals
+        m_deals = df_deals[
+            df_deals["Deal Name Clean"].str.lower().str.contains(term, na=False) |
+            df_deals["Owner Code Clean"].str.lower().str.contains(term, na=False) |
+            df_deals["Client Code Clean"].str.lower().str.contains(term, na=False)
+        ]
+        
+        # Filter matching work orders
+        m_wo = df_wo[
+            df_wo["Deal Name Clean"].str.lower().str.contains(term, na=False) |
+            df_wo["Customer Code Clean"].str.lower().str.contains(term, na=False) |
+            df_wo["Personnel Code Clean"].str.lower().str.contains(term, na=False)
+        ]
+        
+        headline = f"### Item & Entity Lookup Results for '{term.upper()}'\n"
+        headline += f"- **Matching Deals Found (Sales Board)**: {len(m_deals)}\n"
+        headline += f"- **Matching Work Orders Found (Execution Board)**: {len(m_wo)}\n"
+        
+        table_rows = []
+        if len(m_deals) > 0:
+            for _, r in m_deals.head(10).iterrows():
+                table_rows.append({
+                    "Board": "Deals Funnel",
+                    "Item Name": r["Deal Name Clean"],
+                    "Owner / KAM": r["Owner Code Clean"],
+                    "Client Code": r["Client Code Clean"],
+                    "Stage / Status": f"{r['Deal Stage Clean']} ({r['Status Clean']})",
+                    "Value (Excl GST)": f"₹{r['Deal Value Clean']:,.2f}",
+                    "Sector": r["Sector Clean"]
+                })
+                
+        if len(m_wo) > 0:
+            for _, r in m_wo.head(10).iterrows():
+                table_rows.append({
+                    "Board": "Work Orders",
+                    "Item Name": r["Deal Name Clean"],
+                    "Owner / KAM": r["Personnel Code Clean"],
+                    "Client Code": r["Customer Code Clean"],
+                    "Stage / Status": f"Exec: {r['Execution Status Clean']} | Billing: {r['Billing Status Clean']}",
+                    "Value (Excl GST)": f"₹{r['Amount Excl GST Clean']:,.2f}",
+                    "Sector": r["Sector Clean"]
+                })
+                
+        insights = [
+            f"Entity Matching: Search for '{term}' yielded {len(m_deals)} deals and {len(m_wo)} execution work orders.",
+            f"Financial Volume: Total contracted value for matched records is ₹{(m_deals['Deal Value Clean'].sum() + m_wo['Amount Excl GST Clean'].sum()):,.2f}."
+        ]
+        
+        recommendations = [
+            f"Review operational milestones for matched items under client code / deal '{term}'.",
+            "Verify invoicing status to ensure billed value is collected promptly."
+        ]
+        
+        return {
+            "query": query,
+            "status": "success",
+            "headline": headline,
+            "response_text": headline,
+            "table_data": table_rows,
+            "insights": insights,
+            "recommendations": recommendations,
+            "chart_type": "bar",
+            "chart_data": {
+                "x": [r["Item Name"] for r in table_rows[:5]],
+                "y": [float(re.sub(r"[^\d.]", "", r["Value (Excl GST)"])) for r in table_rows[:5]],
+                "title": f"Contracted Value for Entity Match '{term.upper()}'"
+            },
+            "followup_suggestions": [
+                "What is our total revenue, billed value, and uncollected AR?",
+                "Show operational execution status of work orders by sector",
+                "How's our pipeline looking for energy sector this quarter?"
+            ],
+            "data_warnings": self.dm.quality_report["warnings"]
+        }
 
     def _analyze_pipeline_health(self, query: str, df: pd.DataFrame, parsed: Dict[str, Any]) -> Dict[str, Any]:
         """Analyze sales pipeline, weighted value, win rates, and stage distribution."""

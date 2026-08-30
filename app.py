@@ -32,7 +32,6 @@ st.markdown("""
         font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     }
     
-    /* Claude Title & Typography */
     .claude-title {
         font-family: 'Newsreader', Georgia, serif;
         font-size: 2.5rem;
@@ -47,14 +46,6 @@ st.markdown("""
         margin-bottom: 1.8rem;
     }
     
-    /* Claude Terracotta Accents */
-    :root {
-        --claude-orange: #DA7756;
-        --claude-orange-hover: #C66343;
-        --claude-card-border: rgba(218, 119, 86, 0.2);
-    }
-    
-    /* Claude Prompt Pills */
     .stButton>button {
         border-radius: 20px !important;
         font-weight: 500 !important;
@@ -85,7 +76,6 @@ st.markdown("""
         color: #ffffff !important;
     }
     
-    /* Claude Card Containers */
     .resilience-alert {
         background-color: rgba(218, 119, 86, 0.05);
         border: 1px solid rgba(218, 119, 86, 0.2);
@@ -95,7 +85,6 @@ st.markdown("""
         margin: 1.2rem 0;
     }
     
-    /* Tab Styling with Claude Terracotta Indicator */
     .stTabs [data-baseweb="tab-highlight"] {
         background-color: #DA7756 !important;
     }
@@ -130,10 +119,9 @@ dm = get_data_manager(
 agent = BusinessIntelligenceAgent(dm)
 leadership_gen = LeadershipUpdateGenerator(dm.df_deals, dm.df_wo, dm.quality_report)
 
-# Claude Color Palette for Plotly Charts
 CLAUDE_COLORS = ["#DA7756", "#4A7C59", "#5A8496", "#D9A05B", "#8E6C88", "#C15C3D"]
 
-# Sidebar Setup with Top-Left Drone Logo Only
+# Sidebar Setup
 with st.sidebar:
     st.image("https://img.icons8.com/color/96/drone.png", width=60)
     st.title("Skylark BI Control Panel")
@@ -189,11 +177,11 @@ with st.sidebar:
             clean_w = w.replace("⚠️ ", "").replace("ℹ️ ", "").replace("📊 ", "").replace("💵 ", "").replace("📌 ", "").replace("🚨 ", "")
             st.caption(f"- {clean_w}")
 
-# Claude Header Styling
+# Header
 st.markdown('<div class="claude-title">Skylark Drones — Monday.com BI Agent</div>', unsafe_allow_html=True)
 st.markdown('<div class="claude-caption">Executive Decision Intelligence across Sales Pipeline & Operational Execution</div>', unsafe_allow_html=True)
 
-# Application Tabs
+# Tabs
 tab_chat, tab_explorer, tab_leadership, tab_docs = st.tabs([
     "Conversational BI Agent",
     "Board Data Explorer",
@@ -202,27 +190,26 @@ tab_chat, tab_explorer, tab_leadership, tab_docs = st.tabs([
 ])
 
 # ---------------------------------------------------------
-# TAB 1: CONVERSATIONAL BI AGENT (Claude-Style UI & Flow)
+# TAB 1: CONVERSATIONAL BI AGENT (Robust Auto-Scroll & Chat Input Retention)
 # ---------------------------------------------------------
 with tab_chat:
-    selected_prompt = ""
+    prompt_to_add = None
     
-    # 1. Floating Suggested Queries Pills (Only shown BEFORE first query is asked)
+    # 1. Floating Initial Suggested Queries (Only shown when no messages exist)
     if not st.session_state["messages"]:
         st.markdown("##### Suggested Founder Queries:")
         s_cols = st.columns(5)
         
-        p1 = s_cols[0].button("Energy Pipeline", use_container_width=True)
-        p2 = s_cols[1].button("Revenue & AR", use_container_width=True)
-        p3 = s_cols[2].button("Work Order Status", use_container_width=True)
-        p4 = s_cols[3].button("Sector Comparison", use_container_width=True)
-        p5 = s_cols[4].button("Executive Summary", use_container_width=True)
-
-        if p1: selected_prompt = "How's our pipeline looking for energy sector this quarter?"
-        elif p2: selected_prompt = "What is our total revenue, billed value, and uncollected AR?"
-        elif p3: selected_prompt = "Show operational execution status of work orders by sector"
-        elif p4: selected_prompt = "Compare deal win rate and revenue execution across all sectors"
-        elif p5: selected_prompt = "Show complete executive cross-board overview"
+        if s_cols[0].button("Energy Pipeline", use_container_width=True):
+            prompt_to_add = "How's our pipeline looking for energy sector this quarter?"
+        elif s_cols[1].button("Revenue & AR", use_container_width=True):
+            prompt_to_add = "What is our total revenue, billed value, and uncollected AR?"
+        elif s_cols[2].button("Work Order Status", use_container_width=True):
+            prompt_to_add = "Show operational execution status of work orders by sector"
+        elif s_cols[3].button("Sector Comparison", use_container_width=True):
+            prompt_to_add = "Compare deal win rate and revenue execution across all sectors"
+        elif s_cols[4].button("Executive Summary", use_container_width=True):
+            prompt_to_add = "Show complete executive cross-board overview"
 
         st.markdown("---")
 
@@ -242,26 +229,21 @@ with tab_chat:
                         fig = px.pie(names=cdata["labels"], values=cdata["values"], title=cdata.get("title", ""), color_discrete_sequence=CLAUDE_COLORS)
                         st.plotly_chart(fig, use_container_width=True, key=f"hist_pie_{idx}")
                 
-                # Render Claude-style prompt pills below latest assistant response at the bottom
+                # Render Follow-Up Prompts below latest assistant response at the bottom
                 if msg["role"] == "assistant" and idx == len(st.session_state["messages"]) - 1 and msg.get("followups"):
                     st.markdown("##### Suggested Follow-Up Prompts:")
                     f_cols = st.columns(len(msg["followups"]))
                     for f_idx, f_text in enumerate(msg["followups"]):
                         btn_key = f"hist_followup_{idx}_{f_idx}"
                         if f_cols[f_idx].button(f_text, key=btn_key, use_container_width=True):
-                            selected_prompt = f_text
-    else:
-        st.info("Welcome to Skylark Drones BI Agent. Select a prompt pill above or type any question in the chat input below.")
+                            prompt_to_add = f_text
 
-    # 3. Chat Input Box (Pinned Permanently at Bottom)
-    user_input = st.chat_input("Ask a founder-level business question...")
-    query_to_run = selected_prompt or user_input
-    
-    if query_to_run:
-        st.session_state["messages"].append({"role": "user", "content": query_to_run})
+    # 3. Handle Prompt Submission from Button Click
+    if prompt_to_add:
+        st.session_state["messages"].append({"role": "user", "content": prompt_to_add})
         st.rerun()
 
-    # 4. Generate Pending Assistant Response & Stream Word-by-Word
+    # 4. Generate Assistant Response if User Query Pending
     if st.session_state["messages"] and st.session_state["messages"][-1]["role"] == "user":
         latest_query = st.session_state["messages"][-1]["content"]
         
@@ -278,7 +260,7 @@ with tab_chat:
                     for opt in res["options"]:
                         st.caption(f"- {opt}")
                 else:
-                    # Stream line-by-line / word-by-word typing animation (Claude Style)
+                    # Stream text
                     def stream_text():
                         lines = clean_headline.split("\n")
                         for line_idx, line in enumerate(lines):
@@ -292,7 +274,7 @@ with tab_chat:
                                 
                     st.write_stream(stream_text)
                     
-                    # Interactive Chart with Claude Palette
+                    # Chart
                     if "chart_data" in res and res["chart_data"]:
                         cdata = res["chart_data"]
                         chart_key = f"live_chart_{len(st.session_state['messages'])}"
@@ -303,13 +285,13 @@ with tab_chat:
                             fig = px.bar(x=cdata["x"], y=cdata["y"], title=cdata["title"], color_discrete_sequence=CLAUDE_COLORS)
                             st.plotly_chart(fig, use_container_width=True, key=chart_key)
                             
-                    # Data Table Breakdown
+                    # Table
                     if "table_data" in res and res["table_data"]:
                         st.markdown("##### Data Breakdown:")
                         df_table = pd.DataFrame(res["table_data"])
                         st.dataframe(df_table, use_container_width=True)
                         
-                    # Strategic Insights & Recommendations
+                    # Insights & Recs
                     st.markdown("##### Strategic Insights:")
                     for insight in res.get("insights", []):
                         clean_insight = insight.replace("💡 ", "").replace("🎯 ", "").replace("⚠️ ", "").replace("💵 ", "").replace("📌 ", "").replace("🚨 ", "").replace("✅ ", "").replace("🏆 ", "").replace("🔄 ", "").replace("📈 ", "").replace("⚙️ ", "").replace("🛡️ ", "")
@@ -328,15 +310,15 @@ with tab_chat:
                             st.caption(f"- {clean_w}")
                         st.markdown('</div>', unsafe_allow_html=True)
 
-                    # Dynamic Follow-Up Prompt Suggestions (At the Bottom below response)
+                    # Dynamic Follow-Up Prompts
                     if res.get("followup_suggestions"):
-                        st.markdown("##### Suggested Prompts for Next Question:")
+                        st.markdown("##### Suggested Follow-Up Prompts:")
                         f_cols = st.columns(len(res["followup_suggestions"]))
                         for f_idx, f_text in enumerate(res["followup_suggestions"]):
                             btn_key = f"live_followup_{len(st.session_state['messages'])}_{f_idx}"
                             if f_cols[f_idx].button(f_text, key=btn_key, use_container_width=True):
-                                selected_prompt = f_text
-                        
+                                prompt_to_add = f_text
+
                 st.session_state["messages"].append({
                     "role": "assistant",
                     "content": clean_headline,
@@ -345,8 +327,36 @@ with tab_chat:
                     "followups": res.get("followup_suggestions")
                 })
                 
-        # Target Anchor to anchor scroll naturally at the bottom
-        st.markdown('<div id="end-of-chat"></div>', unsafe_allow_html=True)
+                if prompt_to_add:
+                    st.session_state["messages"].append({"role": "user", "content": prompt_to_add})
+                    
+                st.rerun()
+
+    # 5. Pinned Chat Input Box (Guaranteed Permanent Display)
+    user_input = st.chat_input("Ask a founder-level business question...")
+    if user_input:
+        st.session_state["messages"].append({"role": "user", "content": user_input})
+        st.rerun()
+
+    # 6. Smooth Auto-Scroll JavaScript targeting section.main
+    if st.session_state["messages"]:
+        components.html(
+            """
+            <script>
+                function forceScrollBottom() {
+                    try {
+                        var mainDiv = window.parent.document.querySelector('section.main');
+                        if (mainDiv) {
+                            mainDiv.scrollTo({ top: mainDiv.scrollHeight + 2000, behavior: 'smooth' });
+                        }
+                    } catch (e) {}
+                }
+                setTimeout(forceScrollBottom, 50);
+                setTimeout(forceScrollBottom, 300);
+            </script>
+            """,
+            height=0
+        )
 
 # ---------------------------------------------------------
 # TAB 2: BOARD DATA EXPLORER

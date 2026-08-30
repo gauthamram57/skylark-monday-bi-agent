@@ -182,7 +182,7 @@ with tab_chat:
     elif p5: selected_prompt = "Show complete executive cross-board overview"
 
     # Display Chat History
-    for msg in st.session_state["messages"]:
+    for idx, msg in enumerate(st.session_state["messages"]):
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
             if "table" in msg and msg["table"]:
@@ -191,10 +191,10 @@ with tab_chat:
                 cdata = msg["chart"]
                 if cdata.get("x") and cdata.get("y"):
                     fig = px.bar(x=cdata["x"], y=cdata["y"], title=cdata.get("title", ""))
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, use_container_width=True, key=f"hist_bar_{idx}")
                 elif cdata.get("labels") and cdata.get("values"):
                     fig = px.pie(names=cdata["labels"], values=cdata["values"], title=cdata.get("title", ""))
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, use_container_width=True, key=f"hist_pie_{idx}")
 
     # Chat Input Box
     user_input = st.chat_input("Ask a founder-level business question...")
@@ -224,12 +224,13 @@ with tab_chat:
                     # Chart rendering
                     if "chart_data" in res and res["chart_data"]:
                         cdata = res["chart_data"]
+                        chart_key = f"live_chart_{len(st.session_state['messages'])}"
                         if res.get("chart_type") == "pie":
                             fig = px.pie(names=cdata["labels"], values=cdata["values"], title=cdata["title"])
-                            st.plotly_chart(fig, use_container_width=True)
+                            st.plotly_chart(fig, use_container_width=True, key=chart_key)
                         else:
                             fig = px.bar(x=cdata["x"], y=cdata["y"], title=cdata["title"])
-                            st.plotly_chart(fig, use_container_width=True)
+                            st.plotly_chart(fig, use_container_width=True, key=chart_key)
                             
                     # Table rendering
                     if "table_data" in res and res["table_data"]:

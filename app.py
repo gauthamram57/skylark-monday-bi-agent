@@ -14,7 +14,7 @@ from monday_seeder import MondayBoardSeeder
 
 # Page Configuration
 st.set_page_config(
-    page_title="Skylark Drones - Business Intelligence Agent",
+    page_title="Skylark Drones — Monday.com BI Agent",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -23,37 +23,86 @@ st.set_page_config(
 DEALS_EXCEL = "/home/gt/Projects/skylark_project/Deal funnel Data.xlsx"
 WO_EXCEL = "/home/gt/Projects/skylark_project/Work_Order_Tracker Data.xlsx"
 
-# Executive CSS Styling & Button Alignment
+# Claude-Inspired Executive Warm Palette Styling
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Newsreader:ital,wght@0,400;0,600;1,400&display=swap');
     
     html, body, [class*="css"] {
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     }
     
-    .metric-card {
-        border: 1px solid rgba(128, 128, 128, 0.2);
-        border-radius: 8px;
-        padding: 1.2rem;
-        text-align: left;
+    /* Claude Title & Typography */
+    .claude-title {
+        font-family: 'Newsreader', Georgia, serif;
+        font-size: 2.5rem;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        margin-bottom: 0.2rem;
     }
     
+    .claude-caption {
+        font-size: 1.05rem;
+        opacity: 0.75;
+        margin-bottom: 1.8rem;
+    }
+    
+    /* Claude Terracotta Accents */
+    :root {
+        --claude-orange: #DA7756;
+        --claude-orange-hover: #C66343;
+        --claude-card-border: rgba(218, 119, 86, 0.2);
+    }
+    
+    /* Claude Prompt Pills */
+    .stButton>button {
+        border-radius: 20px !important;
+        font-weight: 500 !important;
+        font-size: 0.9rem !important;
+        border: 1px solid rgba(218, 119, 86, 0.3) !important;
+        background-color: transparent !important;
+        transition: all 0.2s ease-in-out !important;
+        padding: 0.4rem 1rem !important;
+        width: 100% !important;
+    }
+    
+    .stButton>button:hover {
+        border-color: #DA7756 !important;
+        color: #DA7756 !important;
+        background-color: rgba(218, 119, 86, 0.08) !important;
+        transform: translateY(-1px);
+    }
+    
+    .stButton>button[kind="primary"] {
+        background-color: #DA7756 !important;
+        color: #ffffff !important;
+        border: none !important;
+        border-radius: 8px !important;
+    }
+    
+    .stButton>button[kind="primary"]:hover {
+        background-color: #C66343 !important;
+        color: #ffffff !important;
+    }
+    
+    /* Claude Card Containers */
     .resilience-alert {
-        border: 1px solid rgba(59, 130, 246, 0.3);
-        border-left: 4px solid #3b82f6;
+        background-color: rgba(218, 119, 86, 0.05);
+        border: 1px solid rgba(218, 119, 86, 0.2);
+        border-left: 4px solid #DA7756;
         padding: 1rem 1.2rem;
-        border-radius: 6px;
+        border-radius: 10px;
         margin: 1.2rem 0;
     }
     
-    /* Clean Equal Button Styling for Suggested Queries */
-    .stButton>button {
-        border-radius: 6px;
+    /* Tab Styling with Claude Terracotta Indicator */
+    .stTabs [data-baseweb="tab-highlight"] {
+        background-color: #DA7756 !important;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
         font-weight: 500;
-        width: 100%;
-        text-align: center;
-        padding: 0.5rem 0.8rem;
+        font-size: 0.95rem;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -80,6 +129,9 @@ dm = get_data_manager(
 )
 agent = BusinessIntelligenceAgent(dm)
 leadership_gen = LeadershipUpdateGenerator(dm.df_deals, dm.df_wo, dm.quality_report)
+
+# Claude Color Palette for Plotly Charts
+CLAUDE_COLORS = ["#DA7756", "#4A7C59", "#5A8496", "#D9A05B", "#8E6C88", "#C15C3D"]
 
 # Sidebar Setup with Top-Left Drone Logo Only
 with st.sidebar:
@@ -137,10 +189,9 @@ with st.sidebar:
             clean_w = w.replace("⚠️ ", "").replace("ℹ️ ", "").replace("📊 ", "").replace("💵 ", "").replace("📌 ", "").replace("🚨 ", "")
             st.caption(f"- {clean_w}")
 
-# Native Theme-Adaptive Header
-st.title("Skylark Drones — Monday.com BI Agent")
-st.caption("Executive Decision Intelligence across Sales Pipeline & Operational Execution")
-st.markdown("---")
+# Claude Header Styling
+st.markdown('<div class="claude-title">Skylark Drones — Monday.com BI Agent</div>', unsafe_allow_html=True)
+st.markdown('<div class="claude-caption">Executive Decision Intelligence across Sales Pipeline & Operational Execution</div>', unsafe_allow_html=True)
 
 # Application Tabs
 tab_chat, tab_explorer, tab_leadership, tab_docs = st.tabs([
@@ -151,14 +202,14 @@ tab_chat, tab_explorer, tab_leadership, tab_docs = st.tabs([
 ])
 
 # ---------------------------------------------------------
-# TAB 1: CONVERSATIONAL BI AGENT (Floating Top Suggestions -> Bottom Follow-ups)
+# TAB 1: CONVERSATIONAL BI AGENT (Claude-Style UI & Flow)
 # ---------------------------------------------------------
 with tab_chat:
     selected_prompt = ""
     
-    # 1. Floating Suggested Queries Header (Only shown BEFORE first query is asked)
+    # 1. Floating Suggested Queries Pills (Only shown BEFORE first query is asked)
     if not st.session_state["messages"]:
-        st.markdown("##### Floating Suggested Queries:")
+        st.markdown("##### Suggested Founder Queries:")
         s_cols = st.columns(5)
         
         p1 = s_cols[0].button("Energy Pipeline", use_container_width=True)
@@ -185,24 +236,24 @@ with tab_chat:
                 if "chart" in msg and msg["chart"]:
                     cdata = msg["chart"]
                     if cdata.get("x") and cdata.get("y"):
-                        fig = px.bar(x=cdata["x"], y=cdata["y"], title=cdata.get("title", ""))
+                        fig = px.bar(x=cdata["x"], y=cdata["y"], title=cdata.get("title", ""), color_discrete_sequence=CLAUDE_COLORS)
                         st.plotly_chart(fig, use_container_width=True, key=f"hist_bar_{idx}")
                     elif cdata.get("labels") and cdata.get("values"):
-                        fig = px.pie(names=cdata["labels"], values=cdata["values"], title=cdata.get("title", ""))
+                        fig = px.pie(names=cdata["labels"], values=cdata["values"], title=cdata.get("title", ""), color_discrete_sequence=CLAUDE_COLORS)
                         st.plotly_chart(fig, use_container_width=True, key=f"hist_pie_{idx}")
                 
-                # Render follow-up prompt buttons below the latest assistant response at the bottom
+                # Render Claude-style prompt pills below latest assistant response at the bottom
                 if msg["role"] == "assistant" and idx == len(st.session_state["messages"]) - 1 and msg.get("followups"):
-                    st.markdown("##### Suggested Prompts for Next Question:")
+                    st.markdown("##### Suggested Follow-Up Prompts:")
                     f_cols = st.columns(len(msg["followups"]))
                     for f_idx, f_text in enumerate(msg["followups"]):
                         btn_key = f"hist_followup_{idx}_{f_idx}"
                         if f_cols[f_idx].button(f_text, key=btn_key, use_container_width=True):
                             selected_prompt = f_text
     else:
-        st.info("Welcome to Skylark Drones BI Agent. Click a floating query button above or type any custom question in the chat input below to begin.")
+        st.info("Welcome to Skylark Drones BI Agent. Select a prompt pill above or type any question in the chat input below.")
 
-    # 3. Process New Query & Stream Line-by-Line
+    # 3. Chat Input Box (Pinned Permanently at Bottom)
     user_input = st.chat_input("Ask a founder-level business question...")
     query_to_run = selected_prompt or user_input
     
@@ -210,7 +261,7 @@ with tab_chat:
         st.session_state["messages"].append({"role": "user", "content": query_to_run})
         st.rerun()
 
-    # 4. Generate Pending Assistant Response
+    # 4. Generate Pending Assistant Response & Stream Word-by-Word
     if st.session_state["messages"] and st.session_state["messages"][-1]["role"] == "user":
         latest_query = st.session_state["messages"][-1]["content"]
         
@@ -227,7 +278,7 @@ with tab_chat:
                     for opt in res["options"]:
                         st.caption(f"- {opt}")
                 else:
-                    # Stream line-by-line / word-by-word typing animation
+                    # Stream line-by-line / word-by-word typing animation (Claude Style)
                     def stream_text():
                         lines = clean_headline.split("\n")
                         for line_idx, line in enumerate(lines):
@@ -241,15 +292,15 @@ with tab_chat:
                                 
                     st.write_stream(stream_text)
                     
-                    # Interactive Chart
+                    # Interactive Chart with Claude Palette
                     if "chart_data" in res and res["chart_data"]:
                         cdata = res["chart_data"]
                         chart_key = f"live_chart_{len(st.session_state['messages'])}"
                         if res.get("chart_type") == "pie":
-                            fig = px.pie(names=cdata["labels"], values=cdata["values"], title=cdata["title"])
+                            fig = px.pie(names=cdata["labels"], values=cdata["values"], title=cdata["title"], color_discrete_sequence=CLAUDE_COLORS)
                             st.plotly_chart(fig, use_container_width=True, key=chart_key)
                         else:
-                            fig = px.bar(x=cdata["x"], y=cdata["y"], title=cdata["title"])
+                            fig = px.bar(x=cdata["x"], y=cdata["y"], title=cdata["title"], color_discrete_sequence=CLAUDE_COLORS)
                             st.plotly_chart(fig, use_container_width=True, key=chart_key)
                             
                     # Data Table Breakdown

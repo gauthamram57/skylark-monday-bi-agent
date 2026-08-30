@@ -345,30 +345,8 @@ with tab_chat:
                     "followups": res.get("followup_suggestions")
                 })
                 
-        # Target Anchor & Multi-Timeout Auto-Scroll JavaScript
+        # Target Anchor to anchor scroll naturally at the bottom
         st.markdown('<div id="end-of-chat"></div>', unsafe_allow_html=True)
-        components.html("""
-        <script>
-            function scrollToBottom() {
-                try {
-                    var mainContainer = window.parent.document.querySelector('.main');
-                    if (mainContainer) {
-                        mainContainer.scrollTo({ top: mainContainer.scrollHeight, behavior: 'smooth' });
-                    }
-                    var target = window.parent.document.getElementById('end-of-chat');
-                    if (target) {
-                        target.scrollIntoView({ behavior: 'smooth', block: 'end' });
-                    }
-                } catch (e) {
-                    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-                }
-            }
-            setTimeout(scrollToBottom, 50);
-            setTimeout(scrollToBottom, 300);
-            setTimeout(scrollToBottom, 800);
-        </script>
-        """, height=0)
-        st.rerun()
 
 # ---------------------------------------------------------
 # TAB 2: BOARD DATA EXPLORER

@@ -151,29 +151,31 @@ tab_chat, tab_explorer, tab_leadership, tab_docs = st.tabs([
 ])
 
 # ---------------------------------------------------------
-# TAB 1: CONVERSATIONAL BI AGENT (Clean Layout, Aligned Grid, Auto-Scroll)
+# TAB 1: CONVERSATIONAL BI AGENT (Floating Top Suggestions -> Bottom Follow-ups)
 # ---------------------------------------------------------
 with tab_chat:
-    # 1. Perfectly Aligned Suggested Queries Grid (1 Row, 5 Equal Columns)
-    st.markdown("##### Suggested Founder Queries:")
-    s_cols = st.columns(5)
-    
-    p1 = s_cols[0].button("Energy Pipeline", use_container_width=True)
-    p2 = s_cols[1].button("Revenue & AR", use_container_width=True)
-    p3 = s_cols[2].button("Work Order Status", use_container_width=True)
-    p4 = s_cols[3].button("Sector Comparison", use_container_width=True)
-    p5 = s_cols[4].button("Executive Summary", use_container_width=True)
-
     selected_prompt = ""
-    if p1: selected_prompt = "How's our pipeline looking for energy sector this quarter?"
-    elif p2: selected_prompt = "What is our total revenue, billed value, and uncollected AR?"
-    elif p3: selected_prompt = "Show operational execution status of work orders by sector"
-    elif p4: selected_prompt = "Compare deal win rate and revenue execution across all sectors"
-    elif p5: selected_prompt = "Show complete executive cross-board overview"
+    
+    # 1. Floating Suggested Queries Header (Only shown BEFORE first query is asked)
+    if not st.session_state["messages"]:
+        st.markdown("##### Floating Suggested Queries:")
+        s_cols = st.columns(5)
+        
+        p1 = s_cols[0].button("Energy Pipeline", use_container_width=True)
+        p2 = s_cols[1].button("Revenue & AR", use_container_width=True)
+        p3 = s_cols[2].button("Work Order Status", use_container_width=True)
+        p4 = s_cols[3].button("Sector Comparison", use_container_width=True)
+        p5 = s_cols[4].button("Executive Summary", use_container_width=True)
 
-    st.markdown("---")
+        if p1: selected_prompt = "How's our pipeline looking for energy sector this quarter?"
+        elif p2: selected_prompt = "What is our total revenue, billed value, and uncollected AR?"
+        elif p3: selected_prompt = "Show operational execution status of work orders by sector"
+        elif p4: selected_prompt = "Compare deal win rate and revenue execution across all sectors"
+        elif p5: selected_prompt = "Show complete executive cross-board overview"
 
-    # 2. Render Existing Chat Messages (Only if messages exist, no empty grey box!)
+        st.markdown("---")
+
+    # 2. Render Existing Chat Messages
     if st.session_state["messages"]:
         for idx, msg in enumerate(st.session_state["messages"]):
             with st.chat_message(msg["role"]):
@@ -188,8 +190,17 @@ with tab_chat:
                     elif cdata.get("labels") and cdata.get("values"):
                         fig = px.pie(names=cdata["labels"], values=cdata["values"], title=cdata.get("title", ""))
                         st.plotly_chart(fig, use_container_width=True, key=f"hist_pie_{idx}")
+                
+                # Render follow-up prompt buttons below the latest assistant response at the bottom
+                if msg["role"] == "assistant" and idx == len(st.session_state["messages"]) - 1 and msg.get("followups"):
+                    st.markdown("##### Suggested Prompts for Next Question:")
+                    f_cols = st.columns(len(msg["followups"]))
+                    for f_idx, f_text in enumerate(msg["followups"]):
+                        btn_key = f"hist_followup_{idx}_{f_idx}"
+                        if f_cols[f_idx].button(f_text, key=btn_key, use_container_width=True):
+                            selected_prompt = f_text
     else:
-        st.info("Welcome to Skylark Drones BI Agent. Click one of the suggested query buttons above or type any custom business question in the chat input below to begin.")
+        st.info("Welcome to Skylark Drones BI Agent. Click a floating query button above or type any custom question in the chat input below to begin.")
 
     # 3. Process New Query & Stream Line-by-Line
     user_input = st.chat_input("Ask a founder-level business question...")
@@ -266,15 +277,14 @@ with tab_chat:
                             st.caption(f"- {clean_w}")
                         st.markdown('</div>', unsafe_allow_html=True)
 
-                    # Dynamic Follow-Up Prompt Suggestions for Next Question
+                    # Dynamic Follow-Up Prompt Suggestions (At the Bottom below response)
                     if res.get("followup_suggestions"):
-                        st.markdown("##### Suggested Follow-Up Prompts:")
+                        st.markdown("##### Suggested Prompts for Next Question:")
                         f_cols = st.columns(len(res["followup_suggestions"]))
                         for f_idx, f_text in enumerate(res["followup_suggestions"]):
-                            btn_key = f"followup_btn_{len(st.session_state['messages'])}_{f_idx}"
+                            btn_key = f"live_followup_{len(st.session_state['messages'])}_{f_idx}"
                             if f_cols[f_idx].button(f_text, key=btn_key, use_container_width=True):
-                                st.session_state["messages"].append({"role": "user", "content": f_text})
-                                st.rerun()
+                                selected_prompt = f_text
                         
                 st.session_state["messages"].append({
                     "role": "assistant",

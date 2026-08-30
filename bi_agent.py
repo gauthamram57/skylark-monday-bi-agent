@@ -135,6 +135,8 @@ class BusinessIntelligenceAgent:
         closed_total = win_count + lost_count
         win_rate = (win_count / closed_total * 100) if closed_total > 0 else 0.0
         
+        sec_str = ", ".join(parsed["sectors"]) if parsed.get("sectors") else "All Sectors"
+        
         open_val = open_df['Deal Value Clean'].sum()
         open_weighted = open_df['Weighted Value'].sum()
         won_val = won_df['Deal Value Clean'].sum()

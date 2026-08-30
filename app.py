@@ -1,6 +1,7 @@
 import os
 import time
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -22,7 +23,7 @@ st.set_page_config(
 DEALS_EXCEL = "/home/gt/Projects/skylark_project/Deal funnel Data.xlsx"
 WO_EXCEL = "/home/gt/Projects/skylark_project/Work_Order_Tracker Data.xlsx"
 
-# Executive ChatGPT-Style CSS Styling
+# Executive CSS Styling & Button Alignment
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
@@ -31,12 +32,6 @@ st.markdown("""
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     }
     
-    /* Scrollable Chat Window styling */
-    .stContainer {
-        border-radius: 10px;
-    }
-    
-    /* Executive Metric Card */
     .metric-card {
         border: 1px solid rgba(128, 128, 128, 0.2);
         border-radius: 8px;
@@ -44,7 +39,6 @@ st.markdown("""
         text-align: left;
     }
     
-    /* Resilience Warning Box */
     .resilience-alert {
         border: 1px solid rgba(59, 130, 246, 0.3);
         border-left: 4px solid #3b82f6;
@@ -53,9 +47,13 @@ st.markdown("""
         margin: 1.2rem 0;
     }
     
+    /* Clean Equal Button Styling for Suggested Queries */
     .stButton>button {
         border-radius: 6px;
         font-weight: 500;
+        width: 100%;
+        text-align: center;
+        padding: 0.5rem 0.8rem;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -153,20 +151,19 @@ tab_chat, tab_explorer, tab_leadership, tab_docs = st.tabs([
 ])
 
 # ---------------------------------------------------------
-# TAB 1: CONVERSATIONAL BI AGENT (ChatGPT-Style Layout & Streaming)
+# TAB 1: CONVERSATIONAL BI AGENT (Clean Layout, Aligned Grid, Auto-Scroll)
 # ---------------------------------------------------------
 with tab_chat:
+    # 1. Perfectly Aligned Suggested Queries Grid (1 Row, 5 Equal Columns)
     st.markdown("##### Suggested Founder Queries:")
-    cols = st.columns(3)
+    s_cols = st.columns(5)
     
-    p1 = cols[0].button("Energy Sector Pipeline This Quarter?")
-    p2 = cols[1].button("Total Revenue, Billed Value & AR?")
-    p3 = cols[2].button("Work Order Execution Status by Sector?")
-    
-    cols2 = st.columns(2)
-    p4 = cols2[0].button("Sector Performance Comparison")
-    p5 = cols2[1].button("Executive Cross-Board Summary")
-    
+    p1 = s_cols[0].button("Energy Pipeline", use_container_width=True)
+    p2 = s_cols[1].button("Revenue & AR", use_container_width=True)
+    p3 = s_cols[2].button("Work Order Status", use_container_width=True)
+    p4 = s_cols[3].button("Sector Comparison", use_container_width=True)
+    p5 = s_cols[4].button("Executive Summary", use_container_width=True)
+
     selected_prompt = ""
     if p1: selected_prompt = "How's our pipeline looking for energy sector this quarter?"
     elif p2: selected_prompt = "What is our total revenue, billed value, and uncollected AR?"
@@ -174,14 +171,10 @@ with tab_chat:
     elif p4: selected_prompt = "Compare deal win rate and revenue execution across all sectors"
     elif p5: selected_prompt = "Show complete executive cross-board overview"
 
-    # ChatGPT-Style Scrollable Chat Window Container (Height 560px)
-    chat_container = st.container(height=560)
-    
-    with chat_container:
-        if not st.session_state["messages"]:
-            st.info("Welcome to Skylark Drones BI Agent. Select a suggested query above or type any custom business question in the chat box below to begin.")
-            
-        # Display Conversation History inside Scrollable Window
+    st.markdown("---")
+
+    # 2. Render Existing Chat Messages (Only if messages exist, no empty grey box!)
+    if st.session_state["messages"]:
         for idx, msg in enumerate(st.session_state["messages"]):
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
@@ -195,92 +188,96 @@ with tab_chat:
                     elif cdata.get("labels") and cdata.get("values"):
                         fig = px.pie(names=cdata["labels"], values=cdata["values"], title=cdata.get("title", ""))
                         st.plotly_chart(fig, use_container_width=True, key=f"hist_pie_{idx}")
+    else:
+        st.info("Welcome to Skylark Drones BI Agent. Click one of the suggested query buttons above or type any custom business question in the chat input below to begin.")
 
-    # Chat Input Box (Pinned Permanently at Bottom Outside Container)
+    # 3. Process New Query & Stream Line-by-Line
     user_input = st.chat_input("Ask a founder-level business question...")
     query_to_run = selected_prompt or user_input
     
     if query_to_run:
-        # Append User Message
         st.session_state["messages"].append({"role": "user", "content": query_to_run})
+        st.rerun()
+
+    # 4. Generate Pending Assistant Response
+    if st.session_state["messages"] and st.session_state["messages"][-1]["role"] == "user":
+        latest_query = st.session_state["messages"][-1]["content"]
         
-        with chat_container:
-            with st.chat_message("user"):
-                st.markdown(query_to_run)
+        with st.chat_message("assistant"):
+            with st.spinner("Analyzing Monday.com boards and querying Business Intelligence..."):
+                res = agent.answer_query(latest_query)
                 
-            with st.chat_message("assistant"):
-                with st.spinner("Analyzing Monday.com boards and generating line-by-line intelligence..."):
-                    res = agent.answer_query(query_to_run)
-                    
-                    # Clean headline text
-                    headline_text = res.get("headline", res.get("response_text", ""))
-                    clean_headline = headline_text.replace("📊 ", "").replace("💰 ", "").replace("🛠️ ", "").replace("🌐 ", "").replace("🏢 ", "").replace("💡 ", "").replace("🎯 ", "").replace("⚠️ ", "").replace("💵 ", "").replace("📌 ", "").replace("🚨 ", "").replace("✅ ", "").replace("🏆 ", "").replace("🔄 ", "").replace("📈 ", "").replace("⚙️ ", "").replace("🛡️ ", "")
-                    
-                    if res.get("status") == "clarification_needed":
-                        st.warning(res["response_text"])
-                        st.write("**Recommended Options:**")
-                        for opt in res["options"]:
-                            st.caption(f"- {opt}")
-                    else:
-                        # Stream line-by-line / word-by-word typing animation (ChatGPT Style)
-                        def stream_line_by_line():
-                            lines = clean_headline.split("\n")
-                            for line_idx, line in enumerate(lines):
-                                words = line.split(" ")
-                                for w_idx, word in enumerate(words):
-                                    yield word + (" " if w_idx < len(words) - 1 else "")
-                                    time.sleep(0.01)
-                                if line_idx < len(lines) - 1:
-                                    yield "\n"
-                                    time.sleep(0.03)
+                headline_text = res.get("headline", res.get("response_text", ""))
+                clean_headline = headline_text.replace("📊 ", "").replace("💰 ", "").replace("🛠️ ", "").replace("🌐 ", "").replace("🏢 ", "").replace("💡 ", "").replace("🎯 ", "").replace("⚠️ ", "").replace("💵 ", "").replace("📌 ", "").replace("🚨 ", "").replace("✅ ", "").replace("🏆 ", "").replace("🔄 ", "").replace("📈 ", "").replace("⚙️ ", "").replace("🛡️ ", "")
+                
+                if res.get("status") == "clarification_needed":
+                    st.warning(res["response_text"])
+                    st.write("**Recommended Options:**")
+                    for opt in res["options"]:
+                        st.caption(f"- {opt}")
+                else:
+                    # Stream line-by-line / word-by-word typing animation
+                    def stream_text():
+                        lines = clean_headline.split("\n")
+                        for line_idx, line in enumerate(lines):
+                            words = line.split(" ")
+                            for w_idx, word in enumerate(words):
+                                yield word + (" " if w_idx < len(words) - 1 else "")
+                                time.sleep(0.008)
+                            if line_idx < len(lines) - 1:
+                                yield "\n"
+                                time.sleep(0.02)
                                 
-                        st.write_stream(stream_line_by_line)
+                    st.write_stream(stream_text)
+                    
+                    # Interactive Chart
+                    if "chart_data" in res and res["chart_data"]:
+                        cdata = res["chart_data"]
+                        chart_key = f"live_chart_{len(st.session_state['messages'])}"
+                        if res.get("chart_type") == "pie":
+                            fig = px.pie(names=cdata["labels"], values=cdata["values"], title=cdata["title"])
+                            st.plotly_chart(fig, use_container_width=True, key=chart_key)
+                        else:
+                            fig = px.bar(x=cdata["x"], y=cdata["y"], title=cdata["title"])
+                            st.plotly_chart(fig, use_container_width=True, key=chart_key)
+                            
+                    # Data Table Breakdown
+                    if "table_data" in res and res["table_data"]:
+                        st.markdown("##### Data Breakdown:")
+                        df_table = pd.DataFrame(res["table_data"])
+                        st.dataframe(df_table, use_container_width=True)
                         
-                        # Interactive Chart
-                        if "chart_data" in res and res["chart_data"]:
-                            cdata = res["chart_data"]
-                            chart_key = f"live_chart_{len(st.session_state['messages'])}"
-                            if res.get("chart_type") == "pie":
-                                fig = px.pie(names=cdata["labels"], values=cdata["values"], title=cdata["title"])
-                                st.plotly_chart(fig, use_container_width=True, key=chart_key)
-                            else:
-                                fig = px.bar(x=cdata["x"], y=cdata["y"], title=cdata["title"])
-                                st.plotly_chart(fig, use_container_width=True, key=chart_key)
-                                
-                        # Data Table Breakdown
-                        if "table_data" in res and res["table_data"]:
-                            st.markdown("##### Data Breakdown:")
-                            df_table = pd.DataFrame(res["table_data"])
-                            st.dataframe(df_table, use_container_width=True)
-                            
-                        # Strategic Insights & Recommendations
-                        st.markdown("##### Strategic Insights:")
-                        for insight in res.get("insights", []):
-                            clean_insight = insight.replace("💡 ", "").replace("🎯 ", "").replace("⚠️ ", "").replace("💵 ", "").replace("📌 ", "").replace("🚨 ", "").replace("✅ ", "").replace("🏆 ", "").replace("🔄 ", "").replace("📈 ", "").replace("⚙️ ", "").replace("🛡️ ", "")
-                            st.write(f"- {clean_insight}")
-                            
-                        st.markdown("##### Recommended Actions:")
-                        for rec in res.get("recommendations", []):
-                            st.write(f"- {rec}")
-                            
-                        # Resilience Caveats
-                        if res.get("data_warnings"):
-                            st.markdown('<div class="resilience-alert">', unsafe_allow_html=True)
-                            st.markdown("**Data Resilience Caveats & Quality Notes:**")
-                            for w in res["data_warnings"]:
-                                clean_w = w.replace("⚠️ ", "").replace("ℹ️ ", "").replace("📊 ", "").replace("💵 ", "").replace("📌 ", "").replace("🚨 ", "")
-                                st.caption(f"- {clean_w}")
-                            st.markdown('</div>', unsafe_allow_html=True)
-                            
-                    # Store message in session state
-                    st.session_state["messages"].append({
-                        "role": "assistant",
-                        "content": clean_headline,
-                        "table": res.get("table_data"),
-                        "chart": res.get("chart_data")
-                    })
-                    
-        # Rerun to refresh scrollable container with latest message at the bottom
+                    # Strategic Insights & Recommendations
+                    st.markdown("##### Strategic Insights:")
+                    for insight in res.get("insights", []):
+                        clean_insight = insight.replace("💡 ", "").replace("🎯 ", "").replace("⚠️ ", "").replace("💵 ", "").replace("📌 ", "").replace("🚨 ", "").replace("✅ ", "").replace("🏆 ", "").replace("🔄 ", "").replace("📈 ", "").replace("⚙️ ", "").replace("🛡️ ", "")
+                        st.write(f"- {clean_insight}")
+                        
+                    st.markdown("##### Recommended Actions:")
+                    for rec in res.get("recommendations", []):
+                        st.write(f"- {rec}")
+                        
+                    # Resilience Caveats
+                    if res.get("data_warnings"):
+                        st.markdown('<div class="resilience-alert">', unsafe_allow_html=True)
+                        st.markdown("**Data Resilience Caveats & Quality Notes:**")
+                        for w in res["data_warnings"]:
+                            clean_w = w.replace("⚠️ ", "").replace("ℹ️ ", "").replace("📊 ", "").replace("💵 ", "").replace("📌 ", "").replace("🚨 ", "")
+                            st.caption(f"- {clean_w}")
+                        st.markdown('</div>', unsafe_allow_html=True)
+                        
+                st.session_state["messages"].append({
+                    "role": "assistant",
+                    "content": clean_headline,
+                    "table": res.get("table_data"),
+                    "chart": res.get("chart_data")
+                })
+                
+        # Smooth Auto-Scroll to Bottom JavaScript
+        components.html(
+            "<script>window.parent.document.querySelector('.main').scrollTo({top: window.parent.document.querySelector('.main').scrollHeight, behavior: 'smooth'});</script>",
+            height=0
+        )
         st.rerun()
 
 # ---------------------------------------------------------

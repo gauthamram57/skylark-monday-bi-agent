@@ -265,12 +265,23 @@ with tab_chat:
                             clean_w = w.replace("⚠️ ", "").replace("ℹ️ ", "").replace("📊 ", "").replace("💵 ", "").replace("📌 ", "").replace("🚨 ", "")
                             st.caption(f"- {clean_w}")
                         st.markdown('</div>', unsafe_allow_html=True)
+
+                    # Dynamic Follow-Up Prompt Suggestions for Next Question
+                    if res.get("followup_suggestions"):
+                        st.markdown("##### Suggested Follow-Up Prompts:")
+                        f_cols = st.columns(len(res["followup_suggestions"]))
+                        for f_idx, f_text in enumerate(res["followup_suggestions"]):
+                            btn_key = f"followup_btn_{len(st.session_state['messages'])}_{f_idx}"
+                            if f_cols[f_idx].button(f_text, key=btn_key, use_container_width=True):
+                                st.session_state["messages"].append({"role": "user", "content": f_text})
+                                st.rerun()
                         
                 st.session_state["messages"].append({
                     "role": "assistant",
                     "content": clean_headline,
                     "table": res.get("table_data"),
-                    "chart": res.get("chart_data")
+                    "chart": res.get("chart_data"),
+                    "followups": res.get("followup_suggestions")
                 })
                 
         # Target Anchor & Multi-Timeout Auto-Scroll JavaScript

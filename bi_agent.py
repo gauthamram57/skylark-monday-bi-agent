@@ -47,7 +47,7 @@ class BusinessIntelligenceAgent:
         elif "q4" in q:
             quarter = "Q4"
         elif "this quarter" in q or "current quarter" in q:
-            quarter = "Q3 FY25-26" # Standard active evaluation quarter
+            quarter = "Q3 FY25-26"
             
         # 3. Intent & Topic Classification
         intent = "general_summary"
@@ -93,6 +93,10 @@ class BusinessIntelligenceAgent:
                     "What is our total revenue, billed value, and uncollected AR?",
                     "Show operational execution status of work orders by sector",
                     "Prepare an executive summary for leadership update"
+                ],
+                "followup_suggestions": [
+                    "What is our total revenue, billed value, and uncollected AR?",
+                    "Show operational execution status of work orders by sector"
                 ],
                 "data_warnings": self.dm.quality_report["warnings"]
             }
@@ -150,7 +154,6 @@ class BusinessIntelligenceAgent:
         if lost_val > 100000000:
             headline += f"- *Data Resilience Note*: Includes {lost_count} lost deals worth ₹{lost_val:,.2f} (e.g. lost tender/enterprise deal Giorno).\n"
         
-        # Breakdown by Deal Stage
         stage_summary = df.groupby("Deal Stage Clean").agg(
             Deal_Count=("Deal Name Clean", "count"),
             Gross_Value=("Deal Value Clean", "sum"),
@@ -163,7 +166,6 @@ class BusinessIntelligenceAgent:
             f"Data Coverage: {(df['Deal Value Clean'] == 0).sum()} deals in this dataset have unpriced zero-value placeholders."
         ]
         
-        # Recommendations
         recommendations = [
             "Prioritize top proposal/commercial stage deals to accelerate close dates before quarter end.",
             "Conduct deal scrub on unpriced open leads to establish clear quota targets."
@@ -183,6 +185,11 @@ class BusinessIntelligenceAgent:
                 "y": stage_summary["Gross_Value"].tolist(),
                 "title": f"Gross Deal Value by Funnel Stage ({sec_str})"
             },
+            "followup_suggestions": [
+                "What is our total revenue, billed value, and uncollected AR?",
+                "Show operational execution status of work orders by sector",
+                "Compare deal win rate and revenue execution across all sectors"
+            ],
             "data_warnings": self.dm.quality_report["warnings"]
         }
 
@@ -195,18 +202,15 @@ class BusinessIntelligenceAgent:
         total_unbilled = df_wo["Unbilled Excl GST Clean"].sum()
         total_receivable = df_wo["Receivable Clean"].sum()
         
-        collection_efficiency = (total_collected / total_billed * 100) if total_billed > 0 else 0.0
-        
         sec_str = ", ".join(parsed["sectors"]) if parsed["sectors"] else "All Sectors"
         
-        headline = f"### 💰 Financial & Revenue Performance ({sec_str})\n"
+        headline = f"### Financial & Revenue Performance ({sec_str})\n"
         headline += f"- **Total Contracted Order Value (Excl GST)**: ₹{total_contract:,.2f}\n"
         headline += f"- **Total Billed Value (Excl GST)**: ₹{total_billed:,.2f} ({total_billed/max(total_contract,1)*100:.1f}% Billed)\n"
         headline += f"- **Total Collected Amount (Incl GST)**: ₹{total_collected:,.2f}\n"
         headline += f"- **Unbilled Backlog**: ₹{total_unbilled:,.2f}\n"
         headline += f"- **Outstanding Accounts Receivable (AR)**: ₹{total_receivable:,.2f}\n"
         
-        # Financial breakdown by billing status
         billing_summary = df_wo.groupby("Billing Status Clean").agg(
             WO_Count=("Serial Clean", "count"),
             Contract_Value=("Amount Excl GST Clean", "sum"),
@@ -215,9 +219,9 @@ class BusinessIntelligenceAgent:
         ).reset_index()
         
         insights = [
-            f"💵 **Collection Realization**: Realized ₹{total_collected:,.2f} in actual collections.",
-            f"📌 **Unbilled Backlog Risk**: ₹{total_unbilled:,.2f} worth of executed/ongoing contracts are pending invoice generation.",
-            f"🚨 **Receivables Concentration**: Outstanding receivables stand at ₹{total_receivable:,.2f} across { (df_wo['Receivable Clean'] > 0).sum() } work orders."
+            f"Collection Realization: Realized ₹{total_collected:,.2f} in actual cash collections.",
+            f"Unbilled Backlog Risk: ₹{total_unbilled:,.2f} worth of executed/ongoing contracts are pending invoice generation.",
+            f"Receivables Concentration: Outstanding receivables stand at ₹{total_receivable:,.2f} across { (df_wo['Receivable Clean'] > 0).sum() } work orders."
         ]
         
         recommendations = [
@@ -239,6 +243,11 @@ class BusinessIntelligenceAgent:
                 "values": billing_summary["Contract_Value"].tolist(),
                 "title": f"Contract Value Distribution by Billing Status ({sec_str})"
             },
+            "followup_suggestions": [
+                "Show operational execution status of work orders by sector",
+                "How's our pipeline looking for energy sector this quarter?",
+                "Compare deal win rate and revenue execution across all sectors"
+            ],
             "data_warnings": self.dm.quality_report["warnings"]
         }
 
@@ -255,7 +264,7 @@ class BusinessIntelligenceAgent:
         
         sec_str = ", ".join(parsed["sectors"]) if parsed["sectors"] else "All Sectors"
         
-        headline = f"### 🛠️ Operational Work Order Execution ({sec_str})\n"
+        headline = f"### Operational Work Order Execution ({sec_str})\n"
         headline += f"- **Total Active Work Orders**: {total_wo}\n"
         headline += f"- **Completed Projects**: {completed_count} ({completed_count/max(total_wo,1)*100:.1f}%)\n"
         headline += f"- **Ongoing Execution**: {ongoing_count} ({ongoing_count/max(total_wo,1)*100:.1f}%)\n"
@@ -269,8 +278,8 @@ class BusinessIntelligenceAgent:
         ).reset_index().sort_values(by="Work_Orders", ascending=False)
         
         insights = [
-            f"✅ **Completion Efficiency**: {completed_count} projects successfully completed execution.",
-            f"⚠️ **Execution Bottleneck**: {paused_count} projects are currently paused or stuck awaiting client inputs."
+            f"Completion Efficiency: {completed_count} projects successfully completed execution.",
+            f"Execution Bottleneck: {paused_count} projects are currently paused or stuck awaiting client inputs."
         ]
         
         recommendations = [
@@ -292,6 +301,11 @@ class BusinessIntelligenceAgent:
                 "y": exec_summary["Work_Orders"].tolist(),
                 "title": f"Work Orders by Execution Status ({sec_str})"
             },
+            "followup_suggestions": [
+                "What is our total revenue, billed value, and uncollected AR?",
+                "How's our pipeline looking for energy sector this quarter?",
+                "Compare deal win rate and revenue execution across all sectors"
+            ],
             "data_warnings": self.dm.quality_report["warnings"]
         }
 
@@ -313,14 +327,14 @@ class BusinessIntelligenceAgent:
         merged = pd.merge(deals_sector, wo_sector, on="Sector Clean", how="outer").fillna(0)
         merged = merged.sort_values(by="Gross_Pipeline", ascending=False)
         
-        headline = "### 🌐 Sectoral Performance & Cross-Board Comparison\n"
+        headline = "### Sectoral Performance & Cross-Board Comparison\n"
         headline += f"- Analyzed performance across {len(merged)} distinct sectors.\n"
         top_sec = merged.iloc[0]["Sector Clean"] if len(merged) > 0 else "N/A"
         headline += f"- **Dominant Sector by Pipeline**: {top_sec} (₹{merged.iloc[0]['Gross_Pipeline']:,.2f})\n"
         
         insights = [
-            f"🏆 **Top Sector Leader**: {top_sec} leads sales volume across deals funnel.",
-            "🔄 **Cross-Board Alignment**: High-volume sales sectors require matched operational capacity to maintain execution SLAs."
+            f"Top Sector Leader: {top_sec} leads sales volume across deals funnel.",
+            "Cross-Board Alignment: High-volume sales sectors require matched operational capacity to maintain execution SLAs."
         ]
         
         recommendations = [
@@ -342,6 +356,11 @@ class BusinessIntelligenceAgent:
                 "y": merged["Gross_Pipeline"].tolist(),
                 "title": "Gross Sales Pipeline by Sector"
             },
+            "followup_suggestions": [
+                "What is our total revenue, billed value, and uncollected AR?",
+                "Show operational execution status of work orders by sector",
+                "How's our pipeline looking for energy sector this quarter?"
+            ],
             "data_warnings": self.dm.quality_report["warnings"]
         }
 
@@ -353,7 +372,7 @@ class BusinessIntelligenceAgent:
         total_billed = df_wo["Billed Excl GST Clean"].sum()
         total_collected = df_wo["Collected Incl GST Clean"].sum()
         
-        headline = "### 🏢 Skylark Drones Executive Business Overview\n"
+        headline = "### Skylark Drones Executive Business Overview\n"
         headline += f"- **Gross Sales Funnel (Deals)**: ₹{total_pipeline:,.2f} ({len(df_deals)} deals)\n"
         headline += f"- **Weighted Funnel Value**: ₹{weighted_pipeline:,.2f}\n"
         headline += f"- **Contracted Work Orders Value**: ₹{total_contracted:,.2f} ({len(df_wo)} work orders)\n"
@@ -361,9 +380,9 @@ class BusinessIntelligenceAgent:
         headline += f"- **Cash Collected (Incl GST)**: ₹{total_collected:,.2f}\n"
         
         insights = [
-            f"📈 **Funnel Health**: Active pipeline stands at ₹{total_pipeline:,.2f} with weighted probability-adjusted value of ₹{weighted_pipeline:,.2f}.",
-            f"⚙️ **Operations Realization**: Work Order contract backlog is ₹{total_contracted:,.2f}, with ₹{total_billed:,.2f} already billed.",
-            f"🛡️ **Data Resilience Score**: Overall Dataset Integrity Score is {self.dm.quality_report['overall_quality_score']}/100."
+            f"Funnel Health: Active pipeline stands at ₹{total_pipeline:,.2f} with weighted probability-adjusted value of ₹{weighted_pipeline:,.2f}.",
+            f"Operations Realization: Work Order contract backlog is ₹{total_contracted:,.2f}, with ₹{total_billed:,.2f} already billed.",
+            f"Data Resilience Score: Overall Dataset Integrity Score is {self.dm.quality_report['overall_quality_score']}/100."
         ]
         
         recommendations = [
@@ -393,5 +412,10 @@ class BusinessIntelligenceAgent:
                 "y": [float(re.sub(r"[^\d.]", "", item["Value (INR)"])) for item in overview_summary],
                 "title": "Skylark Drones Executive Key Metrics (INR)"
             },
+            "followup_suggestions": [
+                "How's our pipeline looking for energy sector this quarter?",
+                "What is our total revenue, billed value, and uncollected AR?",
+                "Show operational execution status of work orders by sector"
+            ],
             "data_warnings": self.dm.quality_report["warnings"]
         }

@@ -1,4 +1,5 @@
 import os
+import time
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -21,28 +22,13 @@ st.set_page_config(
 DEALS_EXCEL = "/home/gt/Projects/skylark_project/Deal funnel Data.xlsx"
 WO_EXCEL = "/home/gt/Projects/skylark_project/Work_Order_Tracker Data.xlsx"
 
-# Executive Styling & Theme-Aware Typography
+# Executive Styling & Theme-Adaptive Typography
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
     
     html, body, [class*="css"] {
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    }
-    
-    /* Responsive & Theme-Aware Header Classes */
-    .title-text {
-        font-size: 2.2rem;
-        font-weight: 700;
-        letter-spacing: -0.02em;
-        margin-bottom: 0.2rem;
-    }
-    
-    .subtitle-text {
-        font-size: 1.05rem;
-        font-weight: 400;
-        opacity: 0.8;
-        margin-bottom: 1.5rem;
     }
     
     .metric-card {
@@ -146,12 +132,12 @@ with st.sidebar:
             clean_w = w.replace("⚠️ ", "").replace("ℹ️ ", "").replace("📊 ", "").replace("💵 ", "").replace("📌 ", "").replace("🚨 ", "")
             st.caption(f"- {clean_w}")
 
-# Native Theme-Adaptive Header for 100% High Visibility
+# Native Theme-Adaptive Header
 st.title("Skylark Drones — Monday.com BI Agent")
 st.caption("Executive Decision Intelligence across Sales Pipeline & Operational Execution")
 st.markdown("---")
 
-# Application Tabs (Clean Titles, No Emojis)
+# Application Tabs
 tab_chat, tab_explorer, tab_leadership, tab_docs = st.tabs([
     "Conversational BI Agent",
     "Board Data Explorer",
@@ -181,7 +167,7 @@ with tab_chat:
     elif p4: selected_prompt = "Compare deal win rate and revenue execution across all sectors"
     elif p5: selected_prompt = "Show complete executive cross-board overview"
 
-    # Display Chat History
+    # Display Conversation History
     for idx, msg in enumerate(st.session_state["messages"]):
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
@@ -196,7 +182,7 @@ with tab_chat:
                     fig = px.pie(names=cdata["labels"], values=cdata["values"], title=cdata.get("title", ""))
                     st.plotly_chart(fig, use_container_width=True, key=f"hist_pie_{idx}")
 
-    # Chat Input Box
+    # Chat Input Box (Pinned to Bottom for Continuous Asking)
     user_input = st.chat_input("Ask a founder-level business question...")
     query_to_run = selected_prompt or user_input
     
@@ -206,10 +192,10 @@ with tab_chat:
             st.markdown(query_to_run)
             
         with st.chat_message("assistant"):
-            with st.spinner("Analyzing Monday.com boards and applying Data Resilience..."):
+            with st.spinner("Analyzing Monday.com boards and querying Business Intelligence..."):
                 res = agent.answer_query(query_to_run)
                 
-                # Strip all emojis from headline/response text
+                # Clean headline text
                 headline_text = res.get("headline", res.get("response_text", ""))
                 clean_headline = headline_text.replace("📊 ", "").replace("💰 ", "").replace("🛠️ ", "").replace("🌐 ", "").replace("🏢 ", "").replace("💡 ", "").replace("🎯 ", "").replace("⚠️ ", "").replace("💵 ", "").replace("📌 ", "").replace("🚨 ", "").replace("✅ ", "").replace("🏆 ", "").replace("🔄 ", "").replace("📈 ", "").replace("⚙️ ", "").replace("🛡️ ", "")
                 
@@ -219,9 +205,16 @@ with tab_chat:
                     for opt in res["options"]:
                         st.caption(f"- {opt}")
                 else:
-                    st.markdown(clean_headline)
+                    # Stream response word-by-word (ChatGPT-style streaming)
+                    def stream_text():
+                        words = clean_headline.split(" ")
+                        for i, word in enumerate(words):
+                            yield word + (" " if i < len(words) - 1 else "")
+                            time.sleep(0.012)
+                            
+                    st.write_stream(stream_text)
                     
-                    # Chart rendering
+                    # Interactive Chart
                     if "chart_data" in res and res["chart_data"]:
                         cdata = res["chart_data"]
                         chart_key = f"live_chart_{len(st.session_state['messages'])}"
@@ -232,7 +225,7 @@ with tab_chat:
                             fig = px.bar(x=cdata["x"], y=cdata["y"], title=cdata["title"])
                             st.plotly_chart(fig, use_container_width=True, key=chart_key)
                             
-                    # Table rendering
+                    # Data Table Breakdown
                     if "table_data" in res and res["table_data"]:
                         st.markdown("##### Data Breakdown:")
                         df_table = pd.DataFrame(res["table_data"])
@@ -257,7 +250,7 @@ with tab_chat:
                             st.caption(f"- {clean_w}")
                         st.markdown('</div>', unsafe_allow_html=True)
                         
-                # Store message in session state
+                # Store message in conversation history
                 st.session_state["messages"].append({
                     "role": "assistant",
                     "content": clean_headline,
